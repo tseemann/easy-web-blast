@@ -19,33 +19,36 @@ sub nocase { lc($a) cmp lc($b) }
 my @tool = qw(blastp blastp blastx tblastn tblastx);
 
 my $q = CGI->new();
-
-my $HOMELINK = $q->p($q->a({-href=>$q->url},'Start a new search'));
-
 print $q->header;
 
 my $cfg = read_config();
 #print $q->pre(Dumper($cfg));
 
-my $title = sprintf("%s BLAST+", $cfg->{name});
-print $q->start_html(
-  -title=>$title,
-  -style=>{ -src=>'blast.css' },
-);
+# create a valid prefix with / or an empty string to use default PATH
+my $exe_prefix = $cfg->{exe_path} ? $cfg->{exe_path}.'/' : '';
+my $HOMELINK = $q->p($q->a({-href=>$q->url},'Start a new search'));
+
+# set up the header
+my $title = sprintf("%s", $cfg->{name});
+print $q->start_html(-title=>$title, -style=>{ -src=>'blast.css' } );
 
 my $ver = blast_version();
 if (my $img = $cfg->{logo}) {
   print $q->img({-src=>$img,-align=>'right'});
 }
 print $q->h1($title);
-print $HOMELINK;
+#print $HOMELINK;
 
+# check if BLAST installed!
+system($exe_prefix.'blastp -version 1> /dev/null 2> /dev/null')==0 or error("Can't find BLAST+ tools.");
+
+# This if() switches between "do the blast" mode and "show a hit seq" mode
 if ($q->url_param('db') and $q->url_param('id')) {
 #  print Dump;
   my $id = $q->url_param('id');
   my $db = $q->url_param('db');
   print $q->h2($id);
-  my $exe = File::Spec->catfile($cfg->{exe_path}, 'blastdbcmd');
+  my $exe = $exe_prefix.'blastdbcmd';
 #  $db = File::Spec->catfile($cfg->{db_path}, $db);
   my $cmd = "$exe -db $db -entry $id";
   print $q->p("Running: <TT>$cmd</TT>");
@@ -57,7 +60,7 @@ elsif ($q->param) {
   print $q->h2("Input");
   print "<UL>\n";
 #  print $q->pre(Dumper($q->param));
-  my $seq = $q->param('seq') or die "need sequence";
+  my $seq = $q->param('seq') or error( "need sequence" );
   $seq = clean_sequence($seq);
   my $seq_dna = is_dna($seq);
   print $q->li("Treating query sequence as ", $seq_dna ? 'DNA' : 'protein');
@@ -75,7 +78,7 @@ elsif ($q->param) {
     }
   }
   else {
-    die "Must specify a database";
+    error( "Must specify a database" );
   }
   print $q->li("Database <TT>$db</TT> is ", $db_dna ? 'DNA' : 'protein');
   print $q->li("Using BLAST tool <TT>$tool</TT>");
@@ -87,11 +90,11 @@ elsif ($q->param) {
   print "</UL>\n";
 
   my $na = $q->param('num_aln') || 50;
-  $na =~ m/^(\d+)$/ or die "Invalid num_aln";
+  $na =~ m/^(\d+)$/ or error( "Invalid num_aln" );
   
   print $q->h2("Execute");
   print $q->p("System status: ", $q->tt( qx(uptime) ) );
-  my $exe = File::Spec->catfile($cfg->{exe_path}, $tool);
+  my $exe = $exe_prefix.$tool;
   my $cmd = "nice $exe -db $db -evalue $evalue -num_threads $cores";
   $cmd .= " -num_descriptions $na -num_alignments $na";
   my $style = $q->param('style') || 'HTML';
@@ -144,18 +147,20 @@ elsif ($q->param) {
   
 #  print $q->p($q->a({-href=>$q->url},'Start a new search'));
 }
-else 
+else ########################## THE BLAST FORM #####################################################
 {
   print $q->start_form();
   
-  print $q->h2("Query sequence");
+  print "Sequence\n";
   print $q->textarea(-class=>'seqtextarea', -name=>'seq',-rows=>15,-columns=>80,
 #    -value=>join('',<DATA>),
   );
-  print q{<br><input type="button" value="Clear" onclick="this.form.elements['seq'].value=''">};
-  print $q->submit(-value=>'BLAST!');
+  print q{<div id='inputbutton'><input type="button" value="Clear" onclick="this.form.elements['seq'].value=''"></div>};
+#  print $q->submit(-value=>'BLAST!');
 
-  print $q->h2("Database");
+  print "<TABLE BORDER=0>\n";  # ugly way to format nicely
+
+  print "<TR><TH>Database<TD>\n";
   my $groups;
   for my $mol ('Protein', 'Nucleotide') {
     my $dbs = get_dbs($cfg->{db_path}, $mol);
@@ -175,12 +180,12 @@ else
     -values =>['(Choose a database)', $groups]
   );
 
-  print $q->h2("E-value");
+  print "<TR><TH>Significance<TD>\n";
 #  print $q->textfield(-name=>'evalue',-size=>5,-value=>'0.01');
   print $q->popup_menu(-name=>'evalue', -value=>[ map { 10**-$_ } -1..10], -default=>0.01);
   #print $q->pre(Dumper($db));
 
-  print $q->h2("Report");
+  print "<TR><TH>Report<TD>\n";
   print $q->radio_group(-name=>'style', -values=>['fancy','HTML', 'text'], -default=>'fancy');
 
 #  print $q->h2("Sensitivity/Speed trade-off");
@@ -192,11 +197,12 @@ else
 #   -values => \@tool,
 #  );
 
-  print $q->h2("Number of alignments");
+  print "<TR><TH>Number of alignments<TD>\n";
   print $q->popup_menu(-name=>'num_aln', -value=>[1,10,50,100,250,500], -default=>50);
-  
-  print $q->h2("Submit");
-  print $q->p, $q->submit(-value=>'BLAST!');
+
+  print "</TABLE>\n";   # formatting
+
+  print $q->p, $q->submit(-value=>'BLAST!', -class=>'submitbutton');
 
 #  my @opt = blast_options();
 #  print $q->pre(map { "$_\n" } @opt);
@@ -211,7 +217,7 @@ else
 
 print $HOMELINK;
 
-my $admin = $cfg->{admin_name} || 'Administrator';
+my $admin = $cfg->{admin_name} || 'your web administrator';
 my $email = $cfg->{admin_email} || 'root@'.hostname;
 
 print $q->hr;
@@ -221,17 +227,24 @@ print $q->end_html;
 #-----------------------------------------------------------------
 
 sub blast_options {
-  my $bin = File::Spec->catfile($cfg->{exe_path}, $tool[0]);
+  my $bin = $exe_prefix.$tool[0];
   my @opt = grep { m/^\s+-/ } qx($bin -help);
   chomp @opt;
   return @opt;
 }
 
+#-----------------------------------------------------------------
+
+sub error {
+  print "<DIV CLASS='error'>ERROR: @_</DIV>\n";
+  exit -1
+}
+
+#-----------------------------------------------------------------
+
 sub blast_version {
-  my $bin = File::Spec->catfile($cfg->{exe_path}, $tool[0]);
-#  print $q->p("BIN=$bin");
+  my $bin = $exe_prefix.$tool[0];
   my($line) = qx($bin -version);
-#  print $q->p("LINE=$line");
   chomp $line;
   $line =~ m/(\d.*\d)/;
   return $1 || '0';  

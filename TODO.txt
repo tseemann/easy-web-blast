@@ -2,6 +2,9 @@
 - Document using  "python -mCGIHTTPServer 3000" to run a standalone server
 
 - Improving error message when user does not select a db 
+	* wrote error() function [TS 10 Jan]
 
 - Improve formatting and styling
+	* done some here, needs more [TS 10 Jan]
+
 

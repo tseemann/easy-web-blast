@@ -18,3 +18,28 @@ HTML, BODY {
   text-align: left;
 }
 
+TABLE {
+  margin-top: 1em;
+}
+
+TH {
+  text-align: left;
+  font-weight: normal;
+}
+
+.submitbutton {
+  font-size: larger;
+  font-weight: bold;
+  font-style: italic;
+}
+
+#clearbutton {
+  align: right;
+}
+
+DIV.error {
+  font-size: x-large;
+  color: red;
+  font-weight: bold;
+}
+
