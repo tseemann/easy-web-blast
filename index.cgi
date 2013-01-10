@@ -65,15 +65,14 @@ elsif ($q->param) {
   my $db_dna = 0;
   my $db = 'NO_DATABASE';
   my $tool = 'NO_TOOL';
-  if ($q->param('db_Protein') and $q->param('db_Protein') !~ m/\(choose/) {
-    $db = $q->param('db_Protein');
-    $db_dna = 0;
-    $tool = $seq_dna ? 'blastx' : 'blastp';
-  }
-  elsif ($q->param('db_Nucleotide') and $q->param('db_Nucleotide') !~ m/\(choose/) {
-    $db = $q->param('db_Nucleotide');
-    $db_dna = 1;
-    $tool = $seq_dna ? 'blastn' : 'tblastn';
+  if ($q->param('db') and $q->param('db') =~ m/^(Protein|Nucleotide) (.*)/) {
+    $db_dna = $1 eq 'Nucleotide';
+    $db = $2;
+    if ($db_dna) {
+      $tool = $seq_dna ? 'blastn' : 'tblastn';
+    } else {
+      $tool = $seq_dna ? 'blastx' : 'blastp';
+    }
   }
   else {
     die "Must specify a database";
@@ -157,18 +156,25 @@ else
   print $q->submit(-value=>'BLAST!');
 
   print $q->h2("Database");
-  my $db;
+  my $groups;
   for my $mol ('Protein', 'Nucleotide') {
-   $db->{$mol} = get_dbs($cfg->{db_path}, $mol);
-   my @db = sort { nocase } keys %{$db->{$mol}};
-   print $q->popup_menu(
-     -name=>"db_$mol",
-     -values=>\@db,
-     -labels=>$db->{$mol},
-     -default=>$db[0],
-#     -onChange=>"this.form.elements['db_$mol'].value=''",
-   );
+    my $dbs = get_dbs($cfg->{db_path}, $mol);
+    my(@values,%labels);
+    for my $db_loc (sort { nocase } keys %{$dbs}) {
+      my $n = "$mol $db_loc";
+      push(@values, $n);
+      $labels{$n} = $dbs->{$db_loc};
+    }
+    my $group = $q->optgroup(-name=>$mol, -values => \@values, -labels=>\%labels);
+    #my $group = $q->optgroup(-name=>$mol, -values => [map {$_ . "_$mol" } @db], -labels=>$db->{$mol});
+    $groups .= $group;
   }
+
+  print $q->popup_menu(
+    -name=>"db",
+    -values =>['(Choose a database)', $groups]
+  );
+
   print $q->h2("E-value");
 #  print $q->textfield(-name=>'evalue',-size=>5,-value=>'0.01');
   print $q->popup_menu(-name=>'evalue', -value=>[ map { 10**-$_ } -1..10], -default=>0.01);
@@ -250,7 +256,6 @@ sub get_dbs {
       $db{ File::Spec->catpath(undef,$dir,$idx) } = $fname;
     }
   }
-  $db{''} = "(choose $moltype database)";
   return \%db;
 }
 
