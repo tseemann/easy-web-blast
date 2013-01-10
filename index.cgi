@@ -37,7 +37,7 @@ my $ver = blast_version();
 if (my $img = $cfg->{logo}) {
   print $q->img({-src=>$img,-align=>'right'});
 }
-print $q->h1("$title $ver");
+print $q->h1($title);
 print $HOMELINK;
 
 if ($q->url_param('db') and $q->url_param('id')) {
