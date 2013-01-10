@@ -150,7 +150,7 @@ else
   
   print $q->h2("Query sequence");
   print $q->textarea(-class=>'seqtextarea', -name=>'seq',-rows=>15,-columns=>80,
-    -value=>join('',<DATA>),
+#    -value=>join('',<DATA>),
   );
   print q{<br><input type="button" value="Clear" onclick="this.form.elements['seq'].value=''">};
   print $q->submit(-value=>'BLAST!');
