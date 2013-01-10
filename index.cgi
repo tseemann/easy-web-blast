@@ -215,7 +215,7 @@ my $admin = $cfg->{admin_name} || 'Administrator';
 my $email = $cfg->{admin_email} || 'root@'.hostname;
 
 print $q->hr;
-print $q->p("WEB-BLAST+ written by Torsten Seemann. Please contact <A HREF='mailto:$email'>$admin</A> if you have problems.");
+print $q->p("Please contact <A HREF='mailto:$email'>$admin</A> if you have problems.");
 print $q->end_html;
 
 #-----------------------------------------------------------------
