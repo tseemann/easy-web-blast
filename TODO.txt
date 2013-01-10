@@ -1,0 +1,7 @@
+
+- Document using  "python -mCGIHTTPServer 3000" to run a standalone server
+
+- Improving error message when user does not select a db 
+
+- Improve formatting and styling
+
